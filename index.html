@@ -3602,11 +3602,22 @@ const allAffixes=[
   ...suffix.filter(x=>!["None","Any"].includes(x.name)).map(x=>({...x,type:"Suffix"}))
 ];
 
+function dreamAffixOptions(kind, source) {
+  const groups=new Map();
+  source.forEach((x,index)=>{
+    if(["None","Any"].includes(x.name)) return;
+    const originalIndex=source.indexOf(x);
+    const label=affixCategory(kind, x.qlvl, originalIndex, "");
+    if(!groups.has(label)) groups.set(label,[]);
+    groups.get(label).push(`<option value="${originalIndex}">${esc(x.name)} · qlvl ${x.qlvl}</option>`);
+  });
+  return `<option value="">None</option>`+[...groups.entries()].map(([label,options])=>`<optgroup label="${esc(label)}">${options.join("")}</optgroup>`).join("");
+}
 function initDream() {
   const b=document.getElementById("dreamBase"),p=document.getElementById("dreamPrefix"),s=document.getElementById("dreamSuffix");
   b.innerHTML=allItems.map((x,i)=>`<option value="${i}">${esc(x.name)} · ilvl ${x.ilvl}</option>`).join("");
-  p.innerHTML=`<option value="">None</option>`+prefix.filter(x=>!["None","Any"].includes(x.name)).map((x,i)=>`<option value="${prefix.indexOf(x)}">${esc(x.name)} · qlvl ${x.qlvl}</option>`).join("");
-  s.innerHTML=`<option value="">None</option>`+suffix.filter(x=>!["None","Any"].includes(x.name)).map(x=>`<option value="${suffix.indexOf(x)}">${esc(x.name)} · qlvl ${x.qlvl}</option>`).join("");
+  p.innerHTML=dreamAffixOptions("prefix",prefix);
+  s.innerHTML=dreamAffixOptions("suffix",suffix);
   [b,p,s].forEach(x=>x.onchange=updateDreamName);updateDreamName();
 }
 function updateDreamName(){
