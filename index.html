@@ -32,7 +32,10 @@ select:disabled{opacity:.45} textarea{min-height:500px;resize:vertical;font:13px
 .actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:15px}
 .btn{border:1px solid #895a28;background:linear-gradient(#74431b,#43240f);color:#fff1d3;padding:9px 14px;min-height:41px}
 .btn.secondary{background:#15100c;border-color:#57432d;color:#d7c7ad} .btn.danger{border-color:#8a4335;background:#452019}
-.status{color:var(--bad);font-size:.88rem;flex:1} .card{border:1px solid #4c321e;background:#100c09;padding:13px}
+.status{color:var(--bad);font-size:.88rem;flex:1;line-height:1.4}
+.status.valid{color:var(--good)}
+select optgroup{color:var(--gold);font-weight:700;background:#17100c}
+select option{color:var(--text);font-weight:400;background:var(--input)} .card{border:1px solid #4c321e;background:#100c09;padding:13px}
 .card strong{display:block;color:var(--gold);margin-bottom:6px} .muted{color:var(--muted)} .small{font-size:.82rem}
 .table-wrap{overflow:auto;max-height:610px;border:1px solid #4b311d} table{width:100%;border-collapse:collapse;font-size:.88rem}
 th,td{padding:9px 10px;border-bottom:1px solid #342318;text-align:left;white-space:nowrap} th{position:sticky;top:0;background:#25170f;color:var(--gold);z-index:1}
@@ -324,6 +327,90 @@ uniqueMonster[68] = new uMonster("Skeleton King",9,14,"special",3,1.00);
 ///////////////////////////////
 //BEGIN TABLE DISPLAY FUNCTIONS
 ///////////////////////////////
+
+// Affix list presentation helpers.
+// These functions only reorganize the visible select menus; calculator data and
+// option values remain unchanged.
+function affixCategory(kind, value, optionIndex, itemClass)
+{
+	var hu = document.documentElement.lang === "hu";
+	var n = parseInt(value, 10);
+
+	if (optionIndex < 2)
+		return hu ? "Alapbeállítások" : "Basic choices";
+
+	if (kind == "suffix" && itemClass == "Staff" && optionIndex >= 14)
+		return hu ? "Varázslatok" : "Staff spells";
+
+	if (kind == "prefix")
+	{
+		if (n <= 7) return "Mana";
+		if (n <= 19) return hu ? "Páncélosztály" : "Armor Class";
+		if (n <= 31) return hu ? "Találati esély" : "Chance to Hit";
+		if (n <= 42) return hu ? "Találati esély és sebzés" : "To Hit and Damage";
+		if (n <= 54) return hu ? "Sebzés" : "Damage";
+		if (n <= 59) return hu ? "Mágia-ellenállás" : "Magic Resistance";
+		if (n <= 64) return hu ? "Tűzellenállás" : "Fire Resistance";
+		if (n <= 69) return hu ? "Villámellenállás" : "Lightning Resistance";
+		if (n <= 74) return hu ? "Minden ellenállás" : "All Resistances";
+		if (n <= 76) return hu ? "Varázslatszint" : "Spell Level";
+		if (n <= 78) return hu ? "Varázslattöltetek" : "Spell Charges";
+		if (n <= 80) return hu ? "Elemi sebzés" : "Elemental Damage";
+	}
+	else
+	{
+		if (n <= 6) return hu ? "Erő" : "Strength";
+		if (n <= 13) return hu ? "Mágia" : "Magic";
+		if (n <= 20) return hu ? "Ügyesség" : "Dexterity";
+		if (n <= 27) return hu ? "Vitalitás" : "Vitality";
+		if (n <= 34) return hu ? "Minden tulajdonság" : "All Attributes";
+		if (n <= 44) return hu ? "Életerő" : "Life";
+		if (n <= 50) return hu ? "Sebzés" : "Damage";
+		if (n <= 57) return hu ? "Sebzéscsökkentés" : "Damage Reduction";
+		if (n <= 63) return hu ? "Elemi sebzés" : "Elemental Damage";
+		if (n <= 67) return hu ? "Élet- és manalopás" : "Life and Mana Steal";
+		if (n <= 70) return hu ? "Páncéltörés" : "Armor Penetration";
+		if (n <= 74) return hu ? "Fényerő" : "Light Radius";
+		if (n <= 78) return hu ? "Támadási sebesség" : "Attack Speed";
+		if (n <= 81) return hu ? "Talpra állás" : "Hit Recovery";
+		if (n <= 89) return hu ? "Tartósság" : "Durability";
+		if (n == 90) return hu ? "Átok" : "Curse";
+		if (n <= 92) return hu ? "Védekezés" : "Defense";
+		if (n <= 94) return hu ? "Különleges" : "Special";
+	}
+	return hu ? "Egyéb" : "Other";
+}
+
+function groupAffixSelect(select, kind)
+{
+	if (!select || select.options.length < 3) return;
+
+	var selectedValue = select.value;
+	var itemClass = document.SelectItem.Class.options[document.SelectItem.Class.selectedIndex].text;
+	var options = Array.from(select.options);
+	var groups = new Map();
+
+	options.forEach(function(option, index){
+		var label = affixCategory(kind, option.value, index, itemClass);
+		if (!groups.has(label)) groups.set(label, []);
+		groups.get(label).push(option);
+	});
+
+	while (select.firstChild) select.removeChild(select.firstChild);
+	groups.forEach(function(groupOptions, label){
+		var group = document.createElement("optgroup");
+		group.label = label;
+		groupOptions.forEach(function(option){ group.appendChild(option); });
+		select.appendChild(group);
+	});
+	select.value = selectedValue;
+}
+
+function organizeAffixSelects()
+{
+	groupAffixSelect(document.SelectItem.Prefix, "prefix");
+	groupAffixSelect(document.SelectItem.Suffix, "suffix");
+}
 
 //update prefix/base item/suffix
 function updateSelectMenu()
@@ -719,18 +806,26 @@ function updateSelectMenu()
 			}
 		}
 	}
+	organizeAffixSelects();
 	validate();
 }
 
 //verify valid item
+function setCalcValidationMessage(en, hu, valid)
+{
+	var status = document.getElementById("Valid");
+	status.textContent = document.documentElement.lang === "hu" ? hu : en;
+	status.classList.toggle("valid", !!valid);
+}
+
 function validate()
 {
-	var node = document.createTextNode("");
-	document.getElementById("Valid").appendChild(node);
+	setCalcValidationMessage("", "", false);
 
 	//is item
 	if (document.SelectItem.Class.selectedIndex == 0)
 	{
+		setCalcValidationMessage("Choose an item class first.", "Először válassz tárgyosztályt.", false);
 		document.SelectItem.Calculate.disabled = true;
 		return;
 	}
@@ -748,11 +843,13 @@ function validate()
 	{
 		if (prefixS.name == "None" && suffixS.name == "None")
 		{
+			setCalcValidationMessage("A magical item needs a prefix, a suffix, or both.", "A mágikus tárgyhoz prefix, suffix vagy mindkettő szükséges.", false);
 			document.SelectItem.Calculate.disabled = true;
 			return;
 		}
 		else if ((prefixS.name == "Plentiful" || prefixS.name == "Bountiful") && document.SelectItem.Suffix.selectedIndex < 14)
 		{
+			setCalcValidationMessage("This staff prefix requires a spell suffix.", "Ehhez a bot-prefixhez varázslat suffix szükséges.", false);
 			document.SelectItem.Calculate.disabled = true;
 			return;
 		}
@@ -781,6 +878,7 @@ function validate()
 	{
 		if (prefixS.name == "None" && suffixS.name == "None")
 		{
+			setCalcValidationMessage("A magical item needs a prefix, a suffix, or both.", "A mágikus tárgyhoz prefix, suffix vagy mindkettő szükséges.", false);
 			document.SelectItem.Calculate.disabled = true;
 			return;
 		}
@@ -789,7 +887,7 @@ function validate()
 	//rules for a prefix
 	if (prefixS.qlvl > 34)
 	{
-		document.getElementById("Valid").firstChild.nodeValue = "This item is NOT a valid drop";
+		setCalcValidationMessage("This item is not a valid drop.", "Ez a tárgy nem lehet érvényes drop.", false);
 		document.SelectItem.Calculate.disabled = true;
 		return;
 	}
@@ -797,7 +895,7 @@ function validate()
 	//rules for a suffix
 	if (suffixS.qlvl > 34)
 	{
-		document.getElementById("Valid").firstChild.nodeValue = "This item is NOT a valid drop";
+		setCalcValidationMessage("This item is not a valid drop.", "Ez a tárgy nem lehet érvényes drop.", false);
 		document.SelectItem.Calculate.disabled = true;
 		return;
 	}
@@ -810,6 +908,7 @@ function validate()
 
 		if (qlvlMin < Math.floor(qlvlMax/2) || qlvlMax > 34)
 		{
+			setCalcValidationMessage("The selected prefix and suffix quality levels are incompatible.", "A kiválasztott prefix és suffix minőségi szintje nem kompatibilis.", false);
 			document.SelectItem.Calculate.disabled = true;
 			return;
 		}
@@ -819,6 +918,7 @@ function validate()
 		{
 			if (prefixS.name == invalidCombo[i] && suffixS.name == invalidCombo[i+24])
 			{
+				setCalcValidationMessage("This prefix and suffix cannot appear together.", "Ez a prefix és suffix nem fordulhat elő együtt.", false);
 				document.SelectItem.Calculate.disabled = true;
 				return;
 			}
@@ -826,11 +926,11 @@ function validate()
 	}
 	if ((prefixS.name == "None" || prefixS.name == "Any") && (suffixS.name == "None" || suffixS.name == "Any"))
 	{
-		document.getElementById("Valid").firstChild.nodeValue = "Please choose a magical item";
+		setCalcValidationMessage("Please choose at least one specific magical affix.", "Válassz legalább egy konkrét mágikus affixet.", false);
 		document.SelectItem.Calculate.disabled = true;
 		return;
 	}
-	document.getElementById("Valid").firstChild.nodeValue = "";
+	setCalcValidationMessage("Valid combination.", "Érvényes kombináció.", true);
 	document.SelectItem.Calculate.disabled = false;
 	return;
 }
@@ -844,11 +944,11 @@ function updatePrefix()
 	//grey out invalid suffixs
 	if (prefixS.name == "None" || prefixS.name == "Any")
 	{
-		document.SelectItem.Suffix.options[0].style.color = "#C0C0C0";
-		document.SelectItem.Suffix.options[1].style.color = "#C0C0C0";
+		document.SelectItem.Suffix.options[0].style.color = "#6f6254";
+		document.SelectItem.Suffix.options[1].style.color = "#6f6254";
 		for (i=2; i<=document.SelectItem.Suffix.options.length-1; i++)
 		{
-			document.SelectItem.Suffix.options[i].style.color = "#5A2D00";
+			document.SelectItem.Suffix.options[i].style.color = "#f1e7d2";
 		}
 	}
 	else
@@ -860,17 +960,17 @@ function updatePrefix()
 			{
 				for (i=0; i<14; i++)
 				{
-					document.SelectItem.Suffix.options[i].style.color = "#C0C0C0";
+					document.SelectItem.Suffix.options[i].style.color = "#6f6254";
 				}
 				for (i=14; i<=document.SelectItem.Suffix.options.length-1; i++)
 				{
-					document.SelectItem.Suffix.options[i].style.color = "#5A2D00";
+					document.SelectItem.Suffix.options[i].style.color = "#f1e7d2";
 				}
 			}
 			else
 			{
-				document.SelectItem.Suffix.options[0].style.color = "#5A2D00";
-				document.SelectItem.Suffix.options[1].style.color = "#5A2D00";
+				document.SelectItem.Suffix.options[0].style.color = "#f1e7d2";
+				document.SelectItem.Suffix.options[1].style.color = "#f1e7d2";
 				for (i=2; i<14; i++)
 				{
 					var qlvlMin = ((prefixS.qlvl < suffix[document.SelectItem.Suffix.options[i].value].qlvl) ? prefixS.qlvl: suffix[document.SelectItem.Suffix.options[i].value].qlvl);
@@ -881,23 +981,23 @@ function updatePrefix()
 					}
 					if (qlvlMin < Math.floor(qlvlMax/2))
 					{
-						document.SelectItem.Suffix.options[i].style.color = "#C0C0C0";
+						document.SelectItem.Suffix.options[i].style.color = "#6f6254";
 					}
 					else
 					{
-						document.SelectItem.Suffix.options[i].style.color = "#5A2D00";
+						document.SelectItem.Suffix.options[i].style.color = "#f1e7d2";
 					}
 				}
 				for (i=14; i<=document.SelectItem.Suffix.options.length-1; i++)
 				{
-					document.SelectItem.Suffix.options[i].style.color = "#5A2D00";
+					document.SelectItem.Suffix.options[i].style.color = "#f1e7d2";
 				}
 			}
 		}
 		else //rules for a prefix and suffix
 		{
-			document.SelectItem.Suffix.options[0].style.color = "#5A2D00";
-			document.SelectItem.Suffix.options[1].style.color = "#5A2D00";
+			document.SelectItem.Suffix.options[0].style.color = "#f1e7d2";
+			document.SelectItem.Suffix.options[1].style.color = "#f1e7d2";
 			for (i=2; i<=document.SelectItem.Suffix.options.length-1; i++)
 			{
 				var qlvlMin = ((prefixS.qlvl < suffix[document.SelectItem.Suffix.options[i].value].qlvl) ? prefixS.qlvl: suffix[document.SelectItem.Suffix.options[i].value].qlvl);
@@ -908,11 +1008,11 @@ function updatePrefix()
 				}
 				if (qlvlMin < Math.floor(qlvlMax/2))
 				{
-					document.SelectItem.Suffix.options[i].style.color = "#C0C0C0";
+					document.SelectItem.Suffix.options[i].style.color = "#6f6254";
 				}
 				else
 				{
-					document.SelectItem.Suffix.options[i].style.color = "#5A2D00";
+					document.SelectItem.Suffix.options[i].style.color = "#f1e7d2";
 				}
 
 				//check invalid affix combinations
@@ -920,7 +1020,7 @@ function updatePrefix()
 				{
 					if (prefixS.name == invalidCombo[j] && suffix[document.SelectItem.Suffix.options[i].value].name == invalidCombo[j+24])
 					{
-						document.SelectItem.Suffix.options[i].style.color = "#C0C0C0";
+						document.SelectItem.Suffix.options[i].style.color = "#6f6254";
 					}
 				}
 			}
@@ -944,17 +1044,17 @@ function updateSuffix()
 	//gray out invalid prefixs
 	if (suffixS.name == "None" || suffixS.name == "Any")
 	{
-		document.SelectItem.Prefix.options[0].style.color = "#C0C0C0";
-		document.SelectItem.Prefix.options[1].style.color = "#C0C0C0";
+		document.SelectItem.Prefix.options[0].style.color = "#6f6254";
+		document.SelectItem.Prefix.options[1].style.color = "#6f6254";
 		for (i=2; i<=document.SelectItem.Prefix.options.length-1; i++)
 		{
 			if (prefix[document.SelectItem.Prefix.options[i].value].name == "Bountiful" || prefix[document.SelectItem.Prefix.options[i].value].name == "Plentiful")
 			{
-				document.SelectItem.Prefix.options[i].style.color = "#C0C0C0";
+				document.SelectItem.Prefix.options[i].style.color = "#6f6254";
 			}
 			else
 			{
-				document.SelectItem.Prefix.options[i].style.color = "#5A2D00";
+				document.SelectItem.Prefix.options[i].style.color = "#f1e7d2";
 			}
 		}
 	}
@@ -967,13 +1067,13 @@ function updateSuffix()
 			{
 				for (i=0; i<=document.SelectItem.Prefix.options.length-1; i++)
 				{
-					document.SelectItem.Prefix.options[i].style.color = "#5A2D00";
+					document.SelectItem.Prefix.options[i].style.color = "#f1e7d2";
 				}
 			}
 			else
 			{
-				document.SelectItem.Prefix.options[0].style.color = "#5A2D00";
-				document.SelectItem.Prefix.options[1].style.color = "#5A2D00";
+				document.SelectItem.Prefix.options[0].style.color = "#f1e7d2";
+				document.SelectItem.Prefix.options[1].style.color = "#f1e7d2";
 				for (i=2; i<=document.SelectItem.Prefix.options.length-1; i++)
 				{
 					var qlvlMin = ((suffixS.qlvl < prefix[document.SelectItem.Prefix.options[i].value].qlvl) ? suffixS.qlvl: prefix[document.SelectItem.Prefix.options[i].value].qlvl);
@@ -984,19 +1084,19 @@ function updateSuffix()
 					}
 					if (qlvlMin < Math.floor(qlvlMax/2) || prefix[document.SelectItem.Prefix.options[i].value].name == "Bountiful" || prefix[document.SelectItem.Prefix.options[i].value].name == "Plentiful")
 					{
-						document.SelectItem.Prefix.options[i].style.color = "#C0C0C0";
+						document.SelectItem.Prefix.options[i].style.color = "#6f6254";
 					}
 					else
 					{
-						document.SelectItem.Prefix.options[i].style.color = "#5A2D00";
+						document.SelectItem.Prefix.options[i].style.color = "#f1e7d2";
 					}
 				}
 			}
 		}
 		else //rules for a prefix and suffix
 		{
-			document.SelectItem.Prefix.options[0].style.color = "#5A2D00";
-			document.SelectItem.Prefix.options[1].style.color = "#5A2D00";
+			document.SelectItem.Prefix.options[0].style.color = "#f1e7d2";
+			document.SelectItem.Prefix.options[1].style.color = "#f1e7d2";
 			for (i=2; i<=document.SelectItem.Prefix.options.length-1; i++)
 			{
 				var qlvlMin = ((suffixS.qlvl < prefix[document.SelectItem.Prefix.options[i].value].qlvl) ? suffixS.qlvl: prefix[document.SelectItem.Prefix.options[i].value].qlvl);
@@ -1007,11 +1107,11 @@ function updateSuffix()
 				}
 				if (qlvlMin < Math.floor(qlvlMax/2) || prefix[document.SelectItem.Prefix.options[i].value].name == "Bountiful" || prefix[document.SelectItem.Prefix.options[i].value].name == "Plentiful")
 				{
-					document.SelectItem.Prefix.options[i].style.color = "#C0C0C0";
+					document.SelectItem.Prefix.options[i].style.color = "#6f6254";
 				}
 				else
 				{
-					document.SelectItem.Prefix.options[i].style.color = "#5A2D00";
+					document.SelectItem.Prefix.options[i].style.color = "#f1e7d2";
 				}
 
 				//check invalid affix combinations
@@ -1019,7 +1119,7 @@ function updateSuffix()
 				{
 					if (suffixS.name == invalidCombo[j] && suffix[document.SelectItem.Suffix.options[i].value].name == invalidCombo[j+24])
 					{
-						document.SelectItem.Suffix.options[i].style.color = "#C0C0C0";
+						document.SelectItem.Suffix.options[i].style.color = "#6f6254";
 					}
 				}
 			}
@@ -3388,8 +3488,8 @@ function WeaponRack(dlvl)
 <div class="grid2">
 <div><label>Item Class</label><select name="Class" onchange="updateSelectMenu();syncCalcName()"><option value="unvalid" selected>Select this first</option><option>Helm</option><option>Armor</option><option>Shield</option><option>Sword</option><option>Axe</option><option>Club</option><option>Bow</option><option>Staff</option><option>Jewelry</option></select></div>
 <div><label>Base Item</label><select name="Base" disabled onchange="syncCalcName()"><option></option><option>Select this first</option></select></div>
-<div><label>Prefix</label><select name="Prefix" disabled onchange="validate();syncCalcName()"><option></option><option>1234567890</option></select></div>
-<div><label>Suffix</label><select name="Suffix" disabled onchange="validate();syncCalcName()"><option></option><option>1234567890</option></select></div>
+<div><label>Prefix</label><select name="Prefix" title="Bright entries are compatible; dim entries are incompatible." disabled onchange="validate();syncCalcName()"><option></option><option>1234567890</option></select></div>
+<div><label>Suffix</label><select name="Suffix" title="Bright entries are compatible; dim entries are incompatible." disabled onchange="validate();syncCalcName()"><option></option><option>1234567890</option></select></div>
 </div>
 <div class="selection"><span class="small muted">Selected item</span><div id="calcName">Choose an item class first.</div></div>
 <div class="actions"><a id="Valid" class="status"></a><input type="hidden" name="blank1"><input type="hidden" name="blank2"><button class="btn" name="Calculate" type="button" onclick="runCalc()" disabled>Calculate</button><button class="btn secondary" type="button" onclick="resetCalc()">Reset</button></div>
