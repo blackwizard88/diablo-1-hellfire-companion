@@ -42,6 +42,25 @@ Neither edition requires an account, server connection or continuous internet ac
 - Local save support
 - Offline-first design
 
+## Screenshots
+
+### Main Window
+
+![Main Window](screenshots/main.jpg)
+
+---
+
+### Item Rarity Calculator
+
+![Item Rarity Calculator](screenshots/rarity_calc.jpg)
+
+---
+
+### Affix Encyclopedia
+
+![Affix Encyclopedia](screenshots/affixes.jpg)
+
+
 ---
 
 ## Using the Web Edition
